@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VC6 代码截图生成器</title>
+    <style>
+        @font-face {
+            font-family: 'Fixedsys';
+            src: url('FSEX.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .input-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: 'Fixedsys', 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #005a9e;
+        }
+
+        #vc6-preview {
+            background: #FFFFFF;
+            font-family: 'Fixedsys', 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1;
+            padding-left: 5px;
+            white-space: pre;
+            color: #000000;
+            border-left: 2px solid #808080;
+            border-top: 0px solid #DFDFDF;
+            border-right: 0px solid #DFDFDF;
+            border-bottom: 0px solid #DFDFDF;
+            box-shadow: inset 2px 0 0 0 #404040, inset 3px 0 0 0 #FFFFFF;
+            overflow: auto;
+            display: inline-block;
+        }
+
+        .preview-container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .keyword { color: #0000FF; }
+        .string { color: #A31515; }
+        .comment { color: #008000; }
+        .preprocessor { color: #0000FF; }
+        .number { color: #000000; }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .code-item, .output-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .item-title {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .remove-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .remove-btn:hover {
+            background-color: #c82333;
+        }
+
+        .add-btn {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+
+        .add-btn:hover {
+            background-color: #218838;
+        }
+
+        #code-list, #output-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .preview-item {
+            margin-bottom: 15px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        #cmd-preview {
+            background: #000000;
+            font-family: 'SimSun', '宋体', monospace;
+            font-size: 24px;
+            line-height: 1.2;
+            padding: 0;
+            white-space: pre-wrap;
+            color: #C0C0C0;
+            border: none;
+            overflow: auto;
+            display: inline-block;
+            min-height: 100px;
+        }
+
+        #output-input {
+            width: 100%;
+            height: 150px;
+            font-family: 'Fixedsys', 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .item-textarea {
+            width: 100%;
+            height: 120px;
+            font-family: 'Fixedsys', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .settings-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .settings-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-item label {
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .setting-item select,
+        .setting-item input[type="number"] {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .setting-item input[type="number"] {
+            width: 70px;
+        }
+
+        .setting-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .highlight-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .highlight-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .highlight-option label {
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="settings-section">
+            <h3 style="margin-bottom: 10px;">预览设置</h3>
+            <div class="settings-group">
+                <div class="setting-item">
+                    <label for="code-font-size">代码字体大小:</label>
+                    <input type="number" id="code-font-size" value="16" min="8" max="32" onchange="updateSettings()">
+                    <span>px</span>
+                </div>
+                <div class="setting-item">
+                    <label for="code-font-family">代码字体:</label>
+                    <select id="code-font-family" onchange="updateSettings()">
+                        <option value="'Fixedsys', 'Courier New', monospace">Fixedsys</option>
+                        <option value="'Courier New', monospace">Courier New</option>
+                        <option value="'Consolas', monospace">Consolas</option>
+                        <option value="monospace">Monospace</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="output-font-size">输出字体大小:</label>
+                    <input type="number" id="output-font-size" value="16" min="8" max="32" onchange="updateSettings()">
+                    <span>px</span>
+                </div>
+                <div class="setting-item">
+                    <label for="output-font-family">输出字体:</label>
+                    <select id="output-font-family" onchange="updateSettings()">
+                        <option value="'SimSun', '宋体', monospace">宋体</option>
+                        <option value="'Fixedsys', 'Courier New', monospace">Fixedsys</option>
+                        <option value="'Consolas', monospace">Consolas</option>
+                        <option value="monospace">Monospace</option>
+                    </select>
+                </div>
+            </div>
+            <div class="highlight-options">
+                <strong style="margin-right: 10px;">代码着色:</strong>
+                <div class="highlight-option">
+                    <input type="checkbox" id="highlight-keywords" checked onchange="updateSettings()">
+                    <label for="highlight-keywords">关键字</label>
+                </div>
+                <div class="highlight-option">
+                    <input type="checkbox" id="highlight-strings" checked onchange="updateSettings()">
+                    <label for="highlight-strings">字符串</label>
+                </div>
+                <div class="highlight-option">
+                    <input type="checkbox" id="highlight-comments" checked onchange="updateSettings()">
+                    <label for="highlight-comments">注释</label>
+                </div>
+                <div class="highlight-option">
+                    <input type="checkbox" id="highlight-preprocessor" checked onchange="updateSettings()">
+                    <label for="highlight-preprocessor">预处理指令</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="two-column">
+            <div class="input-section">
+                <h2 style="margin-bottom: 15px;">代码</h2>
+                <div id="code-list"></div>
+                <div class="buttons">
+                    <button class="add-btn" onclick="addCodeItem()">+ 添加代码</button>
+                    <button onclick="generateAllPreviews()">生成所有预览</button>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h2 style="margin-bottom: 15px;">运行结果</h2>
+                <div id="output-list"></div>
+                <div class="buttons">
+                    <button class="add-btn" onclick="addOutputItem()">+ 添加运行结果</button>
+                    <button onclick="generateAllPreviews()">生成所有预览</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-grid">
+            <div>
+                <h3>代码预览</h3>
+                <div id="code-previews"></div>
+            </div>
+            <div>
+                <h3>运行结果预览</h3>
+                <div id="output-previews"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // C/C++ 关键字列表
+        const keywords = [
+            'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+            'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
+            'int', 'long', 'register', 'return', 'short', 'signed', 'sizeof', 'static',
+            'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
+            'class', 'private', 'protected', 'public', 'friend', 'inline', 'new', 'delete',
+            'this', 'operator', 'virtual', 'namespace', 'using', 'try', 'catch', 'throw',
+            'template', 'typename', 'bool', 'true', 'false', 'nullptr'
+        ];
+
+        let settings = {
+            codeFontSize: 16,
+            codeFontFamily: "'Fixedsys', 'Courier New', monospace",
+            outputFontSize: 16,
+            outputFontFamily: "'SimSun', '宋体', monospace",
+            highlightKeywords: true,
+            highlightStrings: true,
+            highlightComments: true,
+            highlightPreprocessor: true
+        };
+
+        function updateSettings() {
+            settings.codeFontSize = document.getElementById('code-font-size').value;
+            settings.codeFontFamily = document.getElementById('code-font-family').value;
+            settings.outputFontSize = document.getElementById('output-font-size').value;
+            settings.outputFontFamily = document.getElementById('output-font-family').value;
+            settings.highlightKeywords = document.getElementById('highlight-keywords').checked;
+            settings.highlightStrings = document.getElementById('highlight-strings').checked;
+            settings.highlightComments = document.getElementById('highlight-comments').checked;
+            settings.highlightPreprocessor = document.getElementById('highlight-preprocessor').checked;
+            
+            localStorage.setItem('vc6-settings', JSON.stringify(settings));
+            generateAllPreviews();
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('vc6-settings');
+            if (savedSettings) {
+                settings = JSON.parse(savedSettings);
+                document.getElementById('code-font-size').value = settings.codeFontSize;
+                document.getElementById('code-font-family').value = settings.codeFontFamily;
+                document.getElementById('output-font-size').value = settings.outputFontSize;
+                document.getElementById('output-font-family').value = settings.outputFontFamily;
+                document.getElementById('highlight-keywords').checked = settings.highlightKeywords !== false;
+                document.getElementById('highlight-strings').checked = settings.highlightStrings !== false;
+                document.getElementById('highlight-comments').checked = settings.highlightComments !== false;
+                document.getElementById('highlight-preprocessor').checked = settings.highlightPreprocessor !== false;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function highlightCode(code) {
+            let result = '';
+            let i = 0;
+            
+            while (i < code.length) {
+                // 处理预处理指令
+                if (code[i] === '#') {
+                    let j = i + 1;
+                    // 跳过空白
+                    while (j < code.length && /\s/.test(code[j]) && code[j] !== '\n') {
+                        j++;
+                    }
+                    // 获取预处理关键字（如 include, define 等）
+                    let keywordEnd = j;
+                    while (keywordEnd < code.length && /[a-zA-Z_]/.test(code[keywordEnd])) {
+                        keywordEnd++;
+                    }
+                    
+                    if (settings.highlightPreprocessor) {
+                        // 只着色 # 和预处理关键字
+                        result += '<span class="preprocessor">' + escapeHtml(code.substring(i, keywordEnd)) + '</span>';
+                    } else {
+                        result += escapeHtml(code.substring(i, keywordEnd));
+                    }
+                    i = keywordEnd;
+                    continue;
+                }
+
+                // 处理单行注释
+                if (code[i] === '/' && i + 1 < code.length && code[i + 1] === '/') {
+                    let j = i;
+                    while (j < code.length && code[j] !== '\n') {
+                        j++;
+                    }
+                    if (settings.highlightComments) {
+                        result += '<span class="comment">' + escapeHtml(code.substring(i, j)) + '</span>';
+                    } else {
+                        result += escapeHtml(code.substring(i, j));
+                    }
+                    i = j;
+                    continue;
+                }
+
+                // 处理多行注释
+                if (code[i] === '/' && i + 1 < code.length && code[i + 1] === '*') {
+                    let j = i + 2;
+                    while (j < code.length - 1) {
+                        if (code[j] === '*' && code[j + 1] === '/') {
+                            j += 2;
+                            break;
+                        }
+                        j++;
+                    }
+                    if (settings.highlightComments) {
+                        result += '<span class="comment">' + escapeHtml(code.substring(i, j)) + '</span>';
+                    } else {
+                        result += escapeHtml(code.substring(i, j));
+                    }
+                    i = j;
+                    continue;
+                }
+
+                // 处理字符串
+                if (code[i] === '"') {
+                    let j = i + 1;
+                    while (j < code.length) {
+                        if (code[j] === '"' && code[j - 1] !== '\\') {
+                            j++;
+                            break;
+                        }
+                        j++;
+                    }
+                    if (settings.highlightStrings) {
+                        result += '<span class="string">' + escapeHtml(code.substring(i, j)) + '</span>';
+                    } else {
+                        result += escapeHtml(code.substring(i, j));
+                    }
+                    i = j;
+                    continue;
+                }
+
+                // 处理字符常量
+                if (code[i] === "'") {
+                    let j = i + 1;
+                    while (j < code.length) {
+                        if (code[j] === "'" && code[j - 1] !== '\\') {
+                            j++;
+                            break;
+                        }
+                        j++;
+                    }
+                    if (settings.highlightStrings) {
+                        result += '<span class="string">' + escapeHtml(code.substring(i, j)) + '</span>';
+                    } else {
+                        result += escapeHtml(code.substring(i, j));
+                    }
+                    i = j;
+                    continue;
+                }
+
+                // 处理标识符和关键字
+                if (/[a-zA-Z_]/.test(code[i])) {
+                    let j = i;
+                    while (j < code.length && /[a-zA-Z0-9_]/.test(code[j])) {
+                        j++;
+                    }
+                    const word = code.substring(i, j);
+                    if (keywords.includes(word) && settings.highlightKeywords) {
+                        result += '<span class="keyword">' + escapeHtml(word) + '</span>';
+                    } else {
+                        result += escapeHtml(word);
+                    }
+                    i = j;
+                    continue;
+                }
+
+                // 处理数字
+                if (/[0-9]/.test(code[i])) {
+                    let j = i;
+                    while (j < code.length && /[0-9.]/.test(code[j])) {
+                        j++;
+                    }
+                    result += '<span class="number">' + escapeHtml(code.substring(i, j)) + '</span>';
+                    i = j;
+                    continue;
+                }
+
+                // 其他字符
+                result += escapeHtml(code[i]);
+                i++;
+            }
+
+            return result;
+        }
+
+        let codeItems = [];
+        let outputItems = [];
+        let codeCounter = 0;
+        let outputCounter = 0;
+
+        function addCodeItem() {
+            codeCounter++;
+            const id = `code-${codeCounter}`;
+            codeItems.push({
+                id: id,
+                content: '#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}'
+            });
+            renderCodeItems();
+            saveData();
+        }
+
+        function removeCodeItem(id) {
+            codeItems = codeItems.filter(item => item.id !== id);
+            renderCodeItems();
+            generateAllPreviews();
+            saveData();
+        }
+
+        function renderCodeItems() {
+            const container = document.getElementById('code-list');
+            container.innerHTML = '';
+            
+            codeItems.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'code-item';
+                div.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-title">代码 ${index + 1}</span>
+                        <button class="remove-btn" onclick="removeCodeItem('${item.id}')">删除</button>
+                    </div>
+                    <textarea class="item-textarea" id="${item.id}" oninput="updateCodeItem('${item.id}')">${item.content}</textarea>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateCodeItem(id) {
+            const textarea = document.getElementById(id);
+            const item = codeItems.find(item => item.id === id);
+            if (item) {
+                item.content = textarea.value;
+                saveData();
+            }
+        }
+
+        function addOutputItem() {
+            outputCounter++;
+            const id = `output-${outputCounter}`;
+            outputItems.push({
+                id: id,
+                content: 'Hello, World!'
+            });
+            renderOutputItems();
+            saveData();
+        }
+
+        function removeOutputItem(id) {
+            outputItems = outputItems.filter(item => item.id !== id);
+            renderOutputItems();
+            generateAllPreviews();
+            saveData();
+        }
+
+        function renderOutputItems() {
+            const container = document.getElementById('output-list');
+            container.innerHTML = '';
+            
+            outputItems.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'output-item';
+                div.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-title">运行结果 ${index + 1}</span>
+                        <button class="remove-btn" onclick="removeOutputItem('${item.id}')">删除</button>
+                    </div>
+                    <textarea class="item-textarea" id="${item.id}" oninput="updateOutputItem('${item.id}')">${item.content}</textarea>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateOutputItem(id) {
+            const textarea = document.getElementById(id);
+            const item = outputItems.find(item => item.id === id);
+            if (item) {
+                item.content = textarea.value;
+                saveData();
+            }
+        }
+
+        function generateAllPreviews() {
+            // 生成代码预览
+            const codePreviewsContainer = document.getElementById('code-previews');
+            codePreviewsContainer.innerHTML = '';
+            
+            codeItems.forEach((item, index) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'preview-item';
+                
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = `代码 ${index + 1}`;
+                
+                const preview = document.createElement('div');
+                preview.className = 'preview-container';
+                preview.style.display = 'inline-block';
+                preview.innerHTML = `<div style="background: #FFFFFF; font-family: ${settings.codeFontFamily}; font-size: ${settings.codeFontSize}px; line-height: 1; padding-left: 5px; white-space: pre; color: #000000; border-left: 2px solid #808080; border-top: 0px solid #DFDFDF; border-right: 0px solid #DFDFDF; border-bottom: 0px solid #DFDFDF; box-shadow: inset 2px 0 0 0 #404040, inset 3px 0 0 0 #FFFFFF; overflow: auto; display: inline-block;">${highlightCode(item.content)}</div>`;
+                
+                previewDiv.appendChild(title);
+                previewDiv.appendChild(preview);
+                codePreviewsContainer.appendChild(previewDiv);
+            });
+
+            // 生成运行结果预览
+            const outputPreviewsContainer = document.getElementById('output-previews');
+            outputPreviewsContainer.innerHTML = '';
+            
+            outputItems.forEach((item, index) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'preview-item';
+                
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = `运行结果 ${index + 1}`;
+                
+                const preview = document.createElement('div');
+                preview.className = 'preview-container';
+                preview.style.background = '#000000';
+                preview.style.display = 'inline-block';
+                preview.innerHTML = `<div style="background: #000000; font-family: ${settings.outputFontFamily}; font-size: ${settings.outputFontSize}px; line-height: 1.2; padding: 0; white-space: pre-wrap; color: #C0C0C0; border: none; overflow: auto; display: inline-block; min-height: 100px;">${escapeHtml(item.content + '\nPress any key to continue')}</div>`;
+                
+                previewDiv.appendChild(title);
+                previewDiv.appendChild(preview);
+                outputPreviewsContainer.appendChild(previewDiv);
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('vc6-code-items', JSON.stringify(codeItems));
+            localStorage.setItem('vc6-output-items', JSON.stringify(outputItems));
+            localStorage.setItem('vc6-code-counter', codeCounter);
+            localStorage.setItem('vc6-output-counter', outputCounter);
+        }
+
+        function loadData() {
+            const savedCodeItems = localStorage.getItem('vc6-code-items');
+            const savedOutputItems = localStorage.getItem('vc6-output-items');
+            const savedCodeCounter = localStorage.getItem('vc6-code-counter');
+            const savedOutputCounter = localStorage.getItem('vc6-output-counter');
+            
+            if (savedCodeItems) {
+                codeItems = JSON.parse(savedCodeItems);
+            }
+            if (savedOutputItems) {
+                outputItems = JSON.parse(savedOutputItems);
+            }
+            if (savedCodeCounter) {
+                codeCounter = parseInt(savedCodeCounter);
+            }
+            if (savedOutputCounter) {
+                outputCounter = parseInt(savedOutputCounter);
+            }
+
+            // 如果没有任何项，添加默认项
+            if (codeItems.length === 0) {
+                addCodeItem();
+            }
+            if (outputItems.length === 0) {
+                addOutputItem();
+            }
+
+            renderCodeItems();
+            renderOutputItems();
+            generateAllPreviews();
+        }
+
+        // 页面加载时恢复内容并生成预览
+        window.onload = function() {
+            loadSettings();
+            loadData();
+        };
+    </script>
+</body>
+</html>
