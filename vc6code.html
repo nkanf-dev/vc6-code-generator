@@ -94,6 +94,18 @@
             display: inline-block;
         }
 
+        .preview-container.no-radius {
+            border-radius: 0;
+            padding: 0;
+        }
+
+        .white-spacer {
+            background: #ffffff;
+            height: 20px;
+            width: 100%;
+            margin: 0;
+        }
+
         .keyword { color: #0000FF; }
         .string { color: #A31515; }
         .comment { color: #008000; }
@@ -161,6 +173,10 @@
             margin-top: 20px;
         }
 
+        .preview-grid.integrated {
+            grid-template-columns: 1fr;
+        }
+
         .preview-item {
             margin-bottom: 15px;
         }
@@ -170,6 +186,35 @@
             font-weight: bold;
             margin-bottom: 5px;
             color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .preview-image:hover {
+            transform: scale(1.02);
+        }
+
+        .download-link {
+            font-size: 12px;
+            color: #007acc;
+            text-decoration: none;
+            padding: 3px 8px;
+            border: 1px solid #007acc;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .download-link:hover {
+            background-color: #007acc;
+            color: white;
         }
 
         #cmd-preview {
@@ -274,6 +319,73 @@
             color: #555;
             cursor: pointer;
         }
+
+        @media print {
+            @page {
+                margin: 0.5cm;
+                size: auto;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .settings-section,
+            .two-column,
+            .input-section {
+                display: none !important;
+            }
+
+            .preview-grid {
+                display: block !important;
+                margin: 0;
+                padding: 0;
+            }
+
+            .preview-grid > div:last-child {
+                display: none !important;
+            }
+
+            .preview-item {
+                page-break-inside: avoid;
+                margin: 0;
+                padding: 0;
+            }
+
+            .preview-container.no-radius {
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+
+            .white-spacer {
+                height: 10px !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .output-block,
+            .output-block > div {
+                background: #000000 !important;
+                color: #C0C0C0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            #vc6-preview,
+            .preview-container > div {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* 只在整体预览模式下生效 */
+            .preview-grid.integrated h3 {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -329,6 +441,18 @@
                     <label for="highlight-preprocessor">预处理指令</label>
                 </div>
             </div>
+            <div class="highlight-options">
+                <strong style="margin-right: 10px;">预览模式:</strong>
+                <div class="highlight-option">
+                    <input type="checkbox" id="integrated-preview" onchange="updateSettings()">
+                    <label for="integrated-preview">整体预览(打印模式)</label>
+                </div>
+                <div class="setting-item" style="margin-left: 20px;">
+                    <label for="spacer-height">空行高度:</label>
+                    <input type="number" id="spacer-height" value="20" min="0" max="100" onchange="updateSettings()">
+                    <span>px</span>
+                </div>
+            </div>
         </div>
 
         <div class="two-column">
@@ -363,6 +487,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         // C/C++ 关键字列表
         const keywords = [
@@ -383,7 +508,9 @@
             highlightKeywords: true,
             highlightStrings: true,
             highlightComments: true,
-            highlightPreprocessor: true
+            highlightPreprocessor: true,
+            integratedPreview: false,
+            spacerHeight: 20
         };
 
         function updateSettings() {
@@ -395,6 +522,8 @@
             settings.highlightStrings = document.getElementById('highlight-strings').checked;
             settings.highlightComments = document.getElementById('highlight-comments').checked;
             settings.highlightPreprocessor = document.getElementById('highlight-preprocessor').checked;
+            settings.integratedPreview = document.getElementById('integrated-preview').checked;
+            settings.spacerHeight = document.getElementById('spacer-height').value;
             
             localStorage.setItem('vc6-settings', JSON.stringify(settings));
             generateAllPreviews();
@@ -412,6 +541,8 @@
                 document.getElementById('highlight-strings').checked = settings.highlightStrings !== false;
                 document.getElementById('highlight-comments').checked = settings.highlightComments !== false;
                 document.getElementById('highlight-preprocessor').checked = settings.highlightPreprocessor !== false;
+                document.getElementById('integrated-preview').checked = settings.integratedPreview === true;
+                document.getElementById('spacer-height').value = settings.spacerHeight || 20;
             }
         }
 
@@ -652,50 +783,104 @@
         }
 
         function generateAllPreviews() {
-            // 生成代码预览
             const codePreviewsContainer = document.getElementById('code-previews');
-            codePreviewsContainer.innerHTML = '';
-            
-            codeItems.forEach((item, index) => {
-                const previewDiv = document.createElement('div');
-                previewDiv.className = 'preview-item';
-                
-                const title = document.createElement('div');
-                title.className = 'preview-title';
-                title.textContent = `代码 ${index + 1}`;
-                
-                const preview = document.createElement('div');
-                preview.className = 'preview-container';
-                preview.style.display = 'inline-block';
-                preview.innerHTML = `<div style="background: #FFFFFF; font-family: ${settings.codeFontFamily}; font-size: ${settings.codeFontSize}px; line-height: 1; padding-left: 5px; white-space: pre; color: #000000; border-left: 2px solid #808080; border-top: 0px solid #DFDFDF; border-right: 0px solid #DFDFDF; border-bottom: 0px solid #DFDFDF; box-shadow: inset 2px 0 0 0 #404040, inset 3px 0 0 0 #FFFFFF; overflow: auto; display: inline-block;">${highlightCode(item.content)}</div>`;
-                
-                previewDiv.appendChild(title);
-                previewDiv.appendChild(preview);
-                codePreviewsContainer.appendChild(previewDiv);
-            });
-
-            // 生成运行结果预览
             const outputPreviewsContainer = document.getElementById('output-previews');
-            outputPreviewsContainer.innerHTML = '';
+            const previewGrid = document.querySelector('.preview-grid');
             
-            outputItems.forEach((item, index) => {
-                const previewDiv = document.createElement('div');
-                previewDiv.className = 'preview-item';
+            if (settings.integratedPreview) {
+                // 整体预览模式：代码和结果交替显示
+                previewGrid.classList.add('integrated');
+                codePreviewsContainer.innerHTML = '';
+                outputPreviewsContainer.innerHTML = '';
                 
-                const title = document.createElement('div');
-                title.className = 'preview-title';
-                title.textContent = `运行结果 ${index + 1}`;
+                const maxItems = Math.max(codeItems.length, outputItems.length);
                 
-                const preview = document.createElement('div');
-                preview.className = 'preview-container';
-                preview.style.background = '#000000';
-                preview.style.display = 'inline-block';
-                preview.innerHTML = `<div style="background: #000000; font-family: ${settings.outputFontFamily}; font-size: ${settings.outputFontSize}px; line-height: 1.2; padding: 0; white-space: pre-wrap; color: #C0C0C0; border: none; overflow: auto; display: inline-block; min-height: 100px;">${escapeHtml(item.content + '\nPress any key to continue')}</div>`;
+                for (let index = 0; index < maxItems; index++) {
+                    // 在代码块之前添加白色空行
+                    if (index < codeItems.length) {
+                        const spacer = document.createElement('div');
+                        spacer.className = 'white-spacer';
+                        spacer.style.height = settings.spacerHeight + 'px';
+                        codePreviewsContainer.appendChild(spacer);
+                        
+                        const item = codeItems[index];
+                        const previewDiv = document.createElement('div');
+                        previewDiv.className = 'preview-item';
+                        previewDiv.style.marginBottom = '0';
+                        
+                        const preview = document.createElement('div');
+                        preview.className = 'preview-container no-radius';
+                        preview.style.display = 'block';
+                        preview.style.width = '100%';
+                        preview.innerHTML = `<div style="background: #FFFFFF; font-family: ${settings.codeFontFamily}; font-size: ${settings.codeFontSize}px; line-height: 1; padding-left: 5px; white-space: pre; color: #000000; border-left: 2px solid #808080; border-top: 0px solid #DFDFDF; border-right: 0px solid #DFDFDF; border-bottom: 0px solid #DFDFDF; box-shadow: inset 2px 0 0 0 #404040, inset 3px 0 0 0 #FFFFFF; overflow: auto; display: block; width: 100%;">${highlightCode(item.content)}</div>`;
+                        
+                        previewDiv.appendChild(preview);
+                        codePreviewsContainer.appendChild(previewDiv);
+                    }
+                    
+                    // 添加运行结果预览（紧接着代码，无空行）
+                    if (index < outputItems.length) {
+                        const item = outputItems[index];
+                        const previewDiv = document.createElement('div');
+                        previewDiv.className = 'preview-item';
+                        previewDiv.style.marginBottom = '0';
+                        
+                        const preview = document.createElement('div');
+                        preview.className = 'preview-container no-radius output-block';
+                        preview.style.background = '#000000';
+                        preview.style.display = 'block';
+                        preview.style.width = '100%';
+                        preview.innerHTML = `<div style="background: #000000; font-family: ${settings.outputFontFamily}; font-size: ${settings.outputFontSize}px; line-height: 1.2; padding: 0; white-space: pre-wrap; color: #C0C0C0; border: none; overflow: auto; display: block; min-height: 100px; width: 100%;">${escapeHtml(item.content + '\nPress any key to continue')}</div>`;
+                        
+                        previewDiv.appendChild(preview);
+                        codePreviewsContainer.appendChild(previewDiv);
+                    }
+                }
+            } else {
+                // 分栏预览模式：代码和结果分别显示
+                previewGrid.classList.remove('integrated');
+                codePreviewsContainer.innerHTML = '';
                 
-                previewDiv.appendChild(title);
-                previewDiv.appendChild(preview);
-                outputPreviewsContainer.appendChild(previewDiv);
-            });
+                codeItems.forEach((item, index) => {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'preview-item';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'preview-title';
+                    title.textContent = `代码 ${index + 1}`;
+                    
+                    const preview = document.createElement('div');
+                    preview.className = 'preview-container';
+                    preview.style.display = 'inline-block';
+                    preview.innerHTML = `<div style="background: #FFFFFF; font-family: ${settings.codeFontFamily}; font-size: ${settings.codeFontSize}px; line-height: 1; padding-left: 5px; white-space: pre; color: #000000; border-left: 2px solid #808080; border-top: 0px solid #DFDFDF; border-right: 0px solid #DFDFDF; border-bottom: 0px solid #DFDFDF; box-shadow: inset 2px 0 0 0 #404040, inset 3px 0 0 0 #FFFFFF; overflow: auto; display: inline-block;">${highlightCode(item.content)}</div>`;
+                    
+                    previewDiv.appendChild(title);
+                    previewDiv.appendChild(preview);
+                    codePreviewsContainer.appendChild(previewDiv);
+                });
+
+                // 生成运行结果预览
+                outputPreviewsContainer.innerHTML = '';
+                
+                outputItems.forEach((item, index) => {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'preview-item';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'preview-title';
+                    title.textContent = `运行结果 ${index + 1}`;
+                    
+                    const preview = document.createElement('div');
+                    preview.className = 'preview-container';
+                    preview.style.background = '#000000';
+                    preview.style.display = 'inline-block';
+                    preview.innerHTML = `<div style="background: #000000; font-family: ${settings.outputFontFamily}; font-size: ${settings.outputFontSize}px; line-height: 1.2; padding: 0; white-space: pre-wrap; color: #C0C0C0; border: none; overflow: auto; display: inline-block; min-height: 100px;">${escapeHtml(item.content + '\nPress any key to continue')}</div>`;
+                    
+                    previewDiv.appendChild(title);
+                    previewDiv.appendChild(preview);
+                    outputPreviewsContainer.appendChild(previewDiv);
+                });
+            }
         }
 
         function saveData() {
